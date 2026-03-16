@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RU Chatbot - Landing Page</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="landing-shell">
+    <header class="landing-header">
+      <div class="brand">RU Chatbot</div>
+      <nav class="landing-nav">
+        <a class="nav-link" href="login.html">Sign In</a>
+        <a class="nav-link nav-link-filled" href="signup.html">Create Account</a>
+      </nav>
+    </header>
+
+    <main class="landing-main">
+      <section class="hero-card">
+        <p class="hero-kicker">Landing Page</p>
+        <h1>Ask me anything</h1>
+        <p class="hero-text">
+          A simple chatbot interface where users can sign in, start chats,
+          view previous chats, choose a language, and explore agentic mode.
+        </p>
+
+       <div class="preview-input">
+        <label for="landingChatInput" class="preview-label">Start Chat:</label>
+        <input
+         type="text"
+         id="landingChatInput"
+         class="preview-box"
+         placeholder="Ask me anything..."
+        />
+       </div>
+
+        <div class="hero-actions">
+          <a id="landingSignInBtn" href="login.html" class="btn">Sign In</a>
+          <a id="landingCreateBtn" href="signup.html" class="btn btn-secondary">Create Account</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="landing-footer">
+      <a href="terms.html" target="_blank">Terms &amp; Conditions</a>
+      <p class="team-line">
+        Group 5: Andree Saenz, Finnegan Beifus, Keerthan Vijayaravel, Sameer Moyeni
+      </p>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
