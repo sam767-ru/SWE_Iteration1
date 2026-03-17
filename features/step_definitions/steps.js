@@ -12,7 +12,8 @@ Given('I open the landing page', {timeout: 30000}, async function () {
 
 When('I click the "Sign In" button', async function () {
   // This clicks the button on your index.html
-  await page.click('.sign-in-btn'); 
+  await page.click('#landingSignInBtn'); // The # symbol tells Puppeteer to look for an ID 
+  await new Promise(r => setTimeout(r, 3000));
 });
 
 Then('I should be on the login page', async function () {
