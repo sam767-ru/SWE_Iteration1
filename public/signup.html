@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RU Chatbot - Create Account</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <main class="auth-card">
+      <p class="page-tag">Create account</p>
+      <h1>Sign Up</h1>
+
+      <form id="signupForm" class="auth-form">
+        <label for="signupUsername">Username</label>
+        <input type="text" id="signupUsername" name="username" placeholder="Choose a username" required />
+
+        <label for="signupEmail">Email</label>
+        <input type="email" id="signupEmail" name="email" placeholder="Enter email" required />
+
+        <label for="signupPassword">Password</label>
+        <input type="password" id="signupPassword" name="password" placeholder="Create a password" required />
+
+        <button type="submit" class="btn full-width">Create Account</button>
+      </form>
+
+      <p id="signupMessage" class="message"></p>
+
+      <div class="back-row split-row">
+        <a href="index.html">← Back to Home</a>
+        <a href="login.html">Already have an account?</a>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

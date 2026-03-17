@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RU Chatbot - Sign In</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <main class="auth-card">
+      <p class="page-tag">From landing page → Sign in</p>
+      <h1>Sign In</h1>
+
+      <form id="loginForm" class="auth-form">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" name="username" placeholder="Enter username" required />
+
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" name="password" placeholder="Enter password" required />
+
+        <div class="auth-options">
+          <label class="checkbox-line">
+            <input type="checkbox" id="rememberPassword" />
+            <span>Remember Password</span>
+          </label>
+
+          <label class="checkbox-line">
+            <input type="checkbox" id="faceId" />
+            <span>Face ID</span>
+          </label>
+        </div>
+
+        <div class="link-stack">
+          <a href="#" id="forgotPasswordLink">Forgot Password?</a>
+          <a href="signup.html">Create Account</a>
+        </div>
+
+        <button type="submit" class="btn full-width">Sign In</button>
+      </form>
+
+      <button type="button" id="googleSigninBtn" class="google-btn">
+        <span class="google-icon">G</span>
+        <span>Sign in with Google</span>
+      </button>
+
+      <p id="loginMessage" class="message"></p>
+
+      <div class="back-row">
+        <a href="index.html">← Back to Home</a>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

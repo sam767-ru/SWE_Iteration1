@@ -1,0 +1,27 @@
+{
+  "name": "ru-chatbot",
+  "version": "1.0.0",
+  "main": "server/server.js",
+"scripts": {
+  "start": "node server/server.js",
+  "test": "cucumber-js",
+  "unit": "jasmine"
+},
+  "dependencies": {
+    "@cucumber/cucumber": "^12.7.0",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.1",
+    "express-session": "^1.19.0",
+    "puppeteer": "^24.39.1",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "jasmine": "^5.13.0"
+  },
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
