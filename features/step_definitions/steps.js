@@ -4,95 +4,133 @@ const assert = require('assert');
 
 let browser, page;
 
-//Setup / Teardown (better than launching at given)
-Before(async function(){
-  browser = await puppeteer.launch({headless: false});
+Before(async function () {
+  browser = await puppeteer.launch({ headless: false });
   page = await browser.newPage();
 });
 
-After(async function(){
-  if(browser){
+After(async function () {
+  if (browser) {
     await browser.close();
   }
 });
 
-// iteration 1 steps
-Given('I open the landing page', {timeout: 30000}, async function () {
-  // Start at the landing page
-  await page.goto('http://127.0.0.1:8080/public/index.html'); 
+// Iteration 1 steps
+Given('I open the landing page', { timeout: 30000 }, async function () {
+  await page.goto('http://localhost:3000/');
 });
 
 When('I click the "Sign In" button', async function () {
-  // This clicks the button on your index.html
-  await page.click('#landingSignInBtn'); // The # symbol tells Puppeteer to look for an ID 
-  await new Promise(r => setTimeout(r, 3000));
+  await page.click('#landingSignInBtn');
+  await new Promise(resolve => setTimeout(resolve, 3000));
 });
 
 Then('I should be on the login page', async function () {
-  // This waits to see the "Sign In" header from your screenshot
-  await page.waitForSelector('h1'); 
-  console.log("Navigation Successful!");
+  await page.waitForSelector('h1');
+  console.log('Navigation Successful!');
 });
 
-//Iteration 2 steps
+// Iteration 2 steps
 
-// Save conversation History
-Given('I am logged in', async function(){
-  await page.goto('http://127.0.0.1:8080/public/login.html');
-  await page.type('input[name="username"]', 'testuser');
-  await page.type('input[name="password"]', 'testpassword');
-  await page.click('button[type="submit"]');
-  await page.waitForNavigation();
+Given('I am logged in', { timeout: 20000 }, async function () {
+  const username = `testuser_${Date.now()}`;
+  const password = 'testpassword';
+  const email = `${username}@test.com`;
+
+  await page.goto('http://localhost:3000/');
+
+  await page.evaluate(async ({ username, password, email }) => {
+    await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password })
+    });
+
+    const loginRes = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (!loginRes.ok) {
+      const data = await loginRes.json().catch(() => ({}));
+      throw new Error(`Login failed: ${JSON.stringify(data)}`);
+    }
+  }, { username, password, email });
+
+  await page.goto('http://localhost:3000/dashboard');
+  await page.waitForSelector('#chatInput', { timeout: 10000 });
 });
 
-Given('I have an active conversation', async function(){
-  await page.goto('http://127.0.0.1:8080/public/dashboard.html');
-  await page.type('#chat-input', 'Hello');
-  await page.click('#send-button');
-  await page.waitForTimeout(1000);
+Given('I have an active conversation', async function () {
+  await page.goto('http://localhost:3000/dashboard');
+  await page.waitForSelector('#chatInput', { timeout: 10000 });
+  await page.type('#chatInput', 'Hello');
+  await page.click('#sendBtn');
+  await new Promise(resolve => setTimeout(resolve, 2000));
 });
 
-When('I refresh the page', async function(){
+When('I refresh the page', async function () {
   await page.reload();
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
-Then('my conversation should still be available', async function(){
+Then('my conversation should still be available', async function () {
   const content = await page.content();
   assert(content.includes('Hello'));
 });
 
-//Search history
-Given('I have a previous conversation', async function(){
-  await page.goto('http://127.0.0.1:8080/public/dashboard.html');
-  await page.type('#chat-input', 'SearchTestMessage');
-  await page.click('#send-button');
-  await page.waitForTimeout(1000);
+// Search history
+Given('I have a previous conversation', async function () {
+  await page.goto('http://localhost:3000/dashboard');
+  await page.waitForSelector('#chatInput', { timeout: 10000 });
+  await page.type('#chatInput', 'SearchTestMessage');
+  await page.click('#sendBtn');
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
-When('I search for {string}', async function(Keyword){
-  await page.type('#search-bar', Keyword);
-  await page.waitForTimeout(1000);
+When('I search for {string}', async function (keyword) {
+  const searchBox = await page.$('input[placeholder="Search chats..."]');
+
+  await searchBox.click({ clickCount: 3 });
+  await searchBox.type(keyword);
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
-Then('relevant conversations should be displayed', async function(){
+Then('relevant conversations should be displayed', async function () {
   const content = await page.content();
   assert(content.includes('SearchTestMessage'));
 });
 
-//Continue conversation
-Given('I select a previous conversation', async function(){
-  await page.goto('http://127.0.0.1:8080/public/dashboard.html');
-  await page.click('.chat-item');
-  await page.waitForTimeout(1000);
+// Continue conversation
+Given('I select a previous conversation', async function () {
+  await page.goto('http://localhost:3000/dashboard');
+
+  await page.waitForSelector('input[placeholder="Search chats..."]');
+
+  // Just click anywhere in sidebar (past chats area)
+  const elements = await page.$$('div');
+
+  for (let el of elements) {
+    const text = await page.evaluate(e => e.textContent, el);
+    if (text && text.includes('SearchTestMessage')) {
+      await el.click();
+      break;
+    }
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
-When('I send a new message', async function(){
-  await page.type('#chat-input', 'NewMessage');
-  await page.click('#send-button');
-  await page.waitForTimeout(1000);
+When('I send a new message', async function () {
+  await page.waitForSelector('#chatInput', { timeout: 10000 });
+  await page.type('#chatInput', 'NewMessage');
+  await page.click('#sendBtn');
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
-Then('the message should be added to the same conversation', async function(){
+Then('the message should be added to the same conversation', async function () {
   const content = await page.content();
   assert(content.includes('NewMessage'));
 });
