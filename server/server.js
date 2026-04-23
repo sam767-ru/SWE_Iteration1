@@ -1,5 +1,5 @@
 require("dotenv").config();
-const {generateChatReply} = require("./chatService");
+const { generateChatReply, generateMultipleReplies } = require("./chatService");
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
@@ -30,6 +30,87 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, "../public")));
+
+/* ---------- Helpers ---------- */
+
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({
+      error: "You must be logged in to access this resource."
+    });
+  }
+
+  next();
+}
+
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this);
+      }
+    });
+  });
+}
+
+function dbGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+function dbAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+async function getChatByIdForUser(chatId, userId) {
+  return dbGet(
+    `
+      SELECT id, user_id, title, created_at
+      FROM chats
+      WHERE id = ? AND user_id = ?
+    `,
+    [chatId, userId]
+  );
+}
+
+async function getMessagesForChat(chatId) {
+  return dbAll(
+    `
+      SELECT id, chat_id, sender, content, created_at
+      FROM messages
+      WHERE chat_id = ?
+      ORDER BY id ASC
+    `,
+    [chatId]
+  );
+}
+
+function toFrontendMessage(row) {
+  return {
+    id: row.id,
+    sender: row.sender,
+    text: row.content,
+    content: row.content,
+    created_at: row.created_at
+  };
+}
 
 /* ---------- Page Routes ---------- */
 
@@ -216,46 +297,351 @@ app.get("/auth/cas", (req, res) => {
   `);
 });
 
-/* ---------- Chat Demo API Routes ---------- */
+/* ---------- Chat Routes ---------- */
 
-/* Return mock chats for signed-in user */
-app.get("/api/chats", (req, res) => {
-  if (!req.session.user) {
-    return res.status(401).json({
-      error: "You must be logged in to view chats."
+/* Get all chats for signed-in user, with optional search */
+app.get("/api/chats", requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const search = String(req.query.q || "").trim();
+
+  try {
+    let chats;
+
+    if (search) {
+      chats = await dbAll(
+        `
+          SELECT DISTINCT chats.id, chats.title, chats.created_at
+          FROM chats
+          LEFT JOIN messages ON messages.chat_id = chats.id
+          WHERE chats.user_id = ?
+            AND (
+              chats.title LIKE ?
+              OR messages.content LIKE ?
+            )
+          ORDER BY chats.created_at DESC, chats.id DESC
+        `,
+        [userId, `%${search}%`, `%${search}%`]
+      );
+    } else {
+      chats = await dbAll(
+        `
+          SELECT id, title, created_at
+          FROM chats
+          WHERE user_id = ?
+          ORDER BY created_at DESC, id DESC
+        `,
+        [userId]
+      );
+    }
+
+    return res.json(chats);
+  } catch (error) {
+    console.error("Get chats error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to load chats."
     });
   }
-
-  return res.json([
-    {
-      id: 1,
-      title: "Recipe ideas",
-      messages: [
-        { sender: "bot", text: "Welcome. Start a conversation by typing a message below." },
-        { sender: "user", text: "Ask me for a recipe" },
-        { sender: "bot", text: "Sure. What ingredients do you have?" }
-      ]
-    },
-    {
-      id: 2,
-      title: "Homework help",
-      messages: [
-        { sender: "user", text: "Can you explain recursion?" },
-        { sender: "bot", text: "Recursion is when a function calls itself on a smaller version of the same problem." }
-      ]
-    }
-  ]);
 });
 
-/* Demo chatbot reply */
-app.post("/api/chat", async (req, res) => {
-  if (!req.session.user) {
-    return res.status(401).json({
-      error: "You must be logged in to chat."
+/* Create a new chat */
+app.post("/api/chats", requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const rawTitle = String(req.body.title || "").trim();
+  const title = rawTitle || "New Chat";
+
+  try {
+    const result = await dbRun(
+      `
+        INSERT INTO chats (user_id, title)
+        VALUES (?, ?)
+      `,
+      [userId, title]
+    );
+
+    const chat = await dbGet(
+      `
+        SELECT id, title, created_at
+        FROM chats
+        WHERE id = ?
+      `,
+      [result.lastID]
+    );
+
+    return res.status(201).json(chat);
+  } catch (error) {
+    console.error("Create chat error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to create chat."
+    });
+  }
+});
+
+/* Get one chat's messages */
+app.get("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
+  const chatId = Number(req.params.chatId);
+  const userId = req.session.user.id;
+
+  if (!Number.isInteger(chatId) || chatId <= 0) {
+    return res.status(400).json({
+      error: "Invalid chat ID."
     });
   }
 
-  const { message, language, agentMode } = req.body;
+  try {
+    const chat = await getChatByIdForUser(chatId, userId);
+
+    if (!chat) {
+      return res.status(404).json({
+        error: "Chat not found."
+      });
+    }
+
+    const messages = await getMessagesForChat(chatId);
+
+    return res.json({
+      chat: {
+        id: chat.id,
+        title: chat.title,
+        created_at: chat.created_at
+      },
+      messages: messages.map(toFrontendMessage)
+    });
+  } catch (error) {
+    console.error("Get messages error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to load messages."
+    });
+  }
+});
+
+/* Send a message to a specific chat and save both user and single bot messages */
+app.post("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
+  const chatId = Number(req.params.chatId);
+  const userId = req.session.user.id;
+  const message = String(req.body.message || "").trim();
+  const language = req.body.language;
+  const agentMode = Boolean(req.body.agentMode);
+
+  if (!Number.isInteger(chatId) || chatId <= 0) {
+    return res.status(400).json({
+      error: "Invalid chat ID."
+    });
+  }
+
+  if (!message) {
+    return res.status(400).json({
+      error: "Message cannot be empty."
+    });
+  }
+
+  try {
+    const chat = await getChatByIdForUser(chatId, userId);
+
+    if (!chat) {
+      return res.status(404).json({
+        error: "Chat not found."
+      });
+    }
+
+    await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [chatId, "user", message]
+    );
+
+    //const history = await getMessagesForChat(chatId);
+
+    const reply = await generateChatReply({
+      message,
+      history,
+      language,
+      agentMode
+    });
+
+    const botInsert = await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [chatId, "bot", reply]
+    );
+
+    if (!chat.title || chat.title === "New Chat") {
+      const newTitle =
+        message.length > 60 ? `${message.slice(0, 60).trim()}...` : message;
+
+      await dbRun(
+        `
+          UPDATE chats
+          SET title = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        [newTitle || "New Chat", chatId, userId]
+      );
+    }
+
+    const savedReply = await dbGet(
+      `
+        SELECT id, chat_id, sender, content, created_at
+        FROM messages
+        WHERE id = ?
+      `,
+      [botInsert.lastID]
+    );
+
+    return res.json({
+      reply,
+      message: toFrontendMessage(savedReply)
+    });
+  } catch (error) {
+    console.error("Chat message error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to generate chatbot response."
+    });
+  }
+});
+
+/* New route: one prompt -> multiple LLM-style responses */
+app.post("/api/multi-chat", requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const chatId = Number(req.body.chatId);
+  const message = String(req.body.message || "").trim();
+  const language = req.body.language;
+  const agentMode = Boolean(req.body.agentMode);
+
+  if (!Number.isInteger(chatId) || chatId <= 0) {
+    return res.status(400).json({
+      error: "Invalid chat ID."
+    });
+  }
+
+  if (!message) {
+    return res.status(400).json({
+      error: "Message cannot be empty."
+    });
+  }
+
+  try {
+    const chat = await getChatByIdForUser(chatId, userId);
+
+    if (!chat) {
+      return res.status(404).json({
+        error: "Chat not found."
+      });
+    }
+
+    await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [chatId, "user", message]
+    );
+
+    const history = await getMessagesForChat(chatId);
+
+    const responses = await generateMultipleReplies({
+      message,
+      history,
+      language,
+      agentMode
+    });
+
+    if (!chat.title || chat.title === "New Chat") {
+      const newTitle =
+        message.length > 60 ? `${message.slice(0, 60).trim()}...` : message;
+
+      await dbRun(
+        `
+          UPDATE chats
+          SET title = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        [newTitle || "New Chat", chatId, userId]
+      );
+    }
+
+    return res.json({
+      responses
+    });
+  } catch (error) {
+    console.error("Multi-chat error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to generate multiple responses."
+    });
+  }
+});
+
+/* New route: save selected response */
+app.post("/api/save-response", requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const prompt = String(req.body.prompt || "").trim();
+  const responseText = String(req.body.responseText || "").trim();
+  const llmName = String(req.body.llmName || "").trim();
+
+  if (!prompt || !responseText || !llmName) {
+    return res.status(400).json({
+      error: "Prompt, response, and LLM name are required."
+    });
+  }
+
+  try {
+    const result = await dbRun(
+      `
+        INSERT INTO saved_responses (user_id, prompt, response_text, llm_name)
+        VALUES (?, ?, ?, ?)
+      `,
+      [userId, prompt, responseText, llmName]
+    );
+
+    return res.status(201).json({
+      message: "Selected response saved successfully.",
+      savedResponseId: result.lastID
+    });
+  } catch (error) {
+    console.error("Save response error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to save selected response."
+    });
+  }
+});
+
+/* Optional route: get saved responses for signed-in user */
+app.get("/api/saved-responses", requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+
+  try {
+    const rows = await dbAll(
+      `
+        SELECT id, prompt, response_text, llm_name, created_at
+        FROM saved_responses
+        WHERE user_id = ?
+        ORDER BY created_at DESC, id DESC
+      `,
+      [userId]
+    );
+
+    return res.json(rows);
+  } catch (error) {
+    console.error("Get saved responses error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to load saved responses."
+    });
+  }
+});
+
+/* Backward-compatible route for older frontend code */
+app.post("/api/chat", requireAuth, async (req, res) => {
+  const { message, language, agentMode, chatId } = req.body;
 
   if (!message || !String(message).trim()) {
     return res.status(400).json({
@@ -264,15 +650,85 @@ app.post("/api/chat", async (req, res) => {
   }
 
   try {
+    let activeChatId = Number(chatId);
+
+    if (!Number.isInteger(activeChatId) || activeChatId <= 0) {
+      const created = await dbRun(
+        `
+          INSERT INTO chats (user_id, title)
+          VALUES (?, ?)
+        `,
+        [req.session.user.id, "New Chat"]
+      );
+
+      activeChatId = created.lastID;
+    }
+
+    const chat = await getChatByIdForUser(activeChatId, req.session.user.id);
+
+    if (!chat) {
+      return res.status(404).json({
+        error: "Chat not found."
+      });
+    }
+
+    await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [activeChatId, "user", String(message).trim()]
+    );
+
+    const history = await getMessagesForChat(activeChatId);
+
     const reply = await generateChatReply({
-      message,
+      message: String(message).trim(),
+      history,
       language,
       agentMode
     });
 
-    return res.json({ reply });
+    const botInsert = await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [activeChatId, "bot", reply]
+    );
+
+    if (!chat.title || chat.title === "New Chat") {
+      const newTitle =
+        String(message).trim().length > 60
+          ? `${String(message).trim().slice(0, 60)}...`
+          : String(message).trim();
+
+      await dbRun(
+        `
+          UPDATE chats
+          SET title = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        [newTitle || "New Chat", activeChatId, req.session.user.id]
+      );
+    }
+
+    const savedReply = await dbGet(
+      `
+        SELECT id, chat_id, sender, content, created_at
+        FROM messages
+        WHERE id = ?
+      `,
+      [botInsert.lastID]
+    );
+
+    return res.json({
+      chatId: activeChatId,
+      reply,
+      message: toFrontendMessage(savedReply)
+    });
   } catch (error) {
-    console.error("Chat route error:", error.message);
+    console.error("Legacy chat route error:", error.message);
 
     return res.status(500).json({
       error: "Failed to generate chatbot response."
