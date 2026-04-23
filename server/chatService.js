@@ -1,4 +1,4 @@
-const https = require("https");
+const http = require("http");
 
 function localize(text, language) {
   const translations = {
@@ -80,63 +80,65 @@ function getCurrentTime() {
 function detectIntent(message) {
   const lower = String(message || "").toLowerCase();
 
-  if (["hello", "hi", "hey", "good morning", "good evening"].some(k => lower.includes(k))) {
+  if (["hello", "hi", "hey", "good morning", "good evening"].some((k) => lower.includes(k))) {
     return "greeting";
   }
 
-  if (["recipe", "cook", "meal", "dinner", "lunch", "breakfast", "ingredients"].some(k => lower.includes(k))) {
+  if (["recipe", "cook", "meal", "dinner", "lunch", "breakfast", "ingredients"].some((k) => lower.includes(k))) {
     return "recipe";
   }
 
-  if (["homework", "assignment", "study", "quiz", "exam", "school"].some(k => lower.includes(k))) {
+  if (["homework", "assignment", "study", "quiz", "exam", "school"].some((k) => lower.includes(k))) {
     return "homework";
   }
 
-  if (["code", "programming", "bug", "debug", "javascript", "python", "java", "html", "css", "node"].some(k => lower.includes(k))) {
+  if (["code", "programming", "bug", "debug", "javascript", "python", "java", "html", "css", "node"].some((k) => lower.includes(k))) {
     return "coding";
   }
 
-  if (["math", "algebra", "calculus", "equation", "matrix", "probability", "derivative", "integral"].some(k => lower.includes(k))) {
+  if (["math", "algebra", "calculus", "equation", "matrix", "probability", "derivative", "integral"].some((k) => lower.includes(k))) {
     return "math";
   }
 
-  if (["essay", "rewrite", "paragraph", "grammar", "writing"].some(k => lower.includes(k))) {
+  if (["essay", "rewrite", "paragraph", "grammar", "writing"].some((k) => lower.includes(k))) {
     return "writing";
   }
 
-  if (["email", "resume", "cover letter"].some(k => lower.includes(k))) {
+  if (["email", "resume", "cover letter"].some((k) => lower.includes(k))) {
     return "career_writing";
   }
 
-  if (["travel", "trip", "vacation", "flight", "hotel"].some(k => lower.includes(k))) {
+  if (["travel", "trip", "vacation", "flight", "hotel"].some((k) => lower.includes(k))) {
     return "travel";
   }
 
-  if (["workout", "fitness", "gym", "exercise", "diet"].some(k => lower.includes(k))) {
+  if (["workout", "fitness", "gym", "exercise", "diet"].some((k) => lower.includes(k))) {
     return "fitness";
   }
 
-  if (["project", "idea", "brainstorm", "capstone"].some(k => lower.includes(k))) {
+  if (["project", "idea", "brainstorm", "capstone"].some((k) => lower.includes(k))) {
     return "brainstorming";
   }
 
-  if (["what is", "explain", "definition", "meaning"].some(k => lower.includes(k))) {
+  if (["what is", "explain", "definition", "meaning"].some((k) => lower.includes(k))) {
     return "explanation";
   }
 
-  if (["summarize", "summary", "shorten this"].some(k => lower.includes(k))) {
+  if (["summarize", "summary", "shorten this"].some((k) => lower.includes(k))) {
     return "summarization";
   }
 
-  if (["schedule", "plan", "organize", "productivity", "time management"].some(k => lower.includes(k))) {
+  if (["schedule", "plan", "organize", "productivity", "time management"].some((k) => lower.includes(k))) {
     return "planning";
   }
 
-  if (["time", "current time", "what time"].some(k => lower.includes(k)))
+  if (["time", "current time", "what time"].some((k) => lower.includes(k))) {
     return "time";
+  }
 
-  if (["weather", "temperature", "forecast"].some(k => lower.includes(k)))
+  if (["weather", "temperature", "forecast"].some((k) => lower.includes(k))) {
     return "weather";
+  }
 
   return "general";
 }
@@ -187,7 +189,7 @@ function getDetailedReply(intent, message, language) {
     brainstorming:
       "I can help brainstorm ideas in a more descriptive way. Tell me the project type, requirements, budget, or constraints, and I can suggest several directions.",
     explanation:
-      `I can explain that in more detail. Tell me exactly what concept or term you want explained, and I can break it into simple parts with examples.`,
+      "I can explain that in more detail. Tell me exactly what concept or term you want explained, and I can break it into simple parts with examples.",
     summarization:
       "I can summarize text in a more useful way. Paste the text and tell me whether you want a short summary, bullet points, or key takeaways.",
     planning:
@@ -197,7 +199,7 @@ function getDetailedReply(intent, message, language) {
     time:
       `The current system time is ${getCurrentTime()}. If you need help scheduling tasks or planning your day, I can also help organize your time.`,
     weather:
-      `I can help you check the weather forecast. Tell me the city or location you want, and I can provide temperature, conditions, and forecast details.`
+      "I can help you check the weather forecast. Tell me the city or location you want, and I can provide temperature, conditions, and forecast details."
   };
 
   return localize(replies[intent] || replies.general, language);
@@ -219,19 +221,18 @@ function getFallbackReply(message, language = "english", agentMode = false) {
   return getSimpleReply(intent, language);
 }
 
-function postJson(url, headers, body) {
+function postJson(url, body) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
 
-    const req = https.request(
+    const req = http.request(
       {
         hostname: parsed.hostname,
         path: parsed.pathname + parsed.search,
         method: "POST",
-        port: parsed.port || 443,
+        port: parsed.port || 80,
         headers: {
-          "Content-Type": "application/json",
-          ...headers
+          "Content-Type": "application/json"
         }
       },
       (res) => {
@@ -246,24 +247,27 @@ function postJson(url, headers, body) {
             const json = JSON.parse(data);
             resolve({ status: res.statusCode, data: json });
           } catch (error) {
-            reject(new Error("Failed to parse AI provider response."));
+            reject(new Error(`Failed to parse Ollama response: ${data}`));
           }
         });
       }
     );
 
-    req.setTimeout(15000, () => {
+    req.setTimeout(180000, () => {
       req.destroy();
-      reject(new Error("AI provider request timed out."));
+      reject(new Error("Ollama request timed out."));
     });
 
-    req.on("error", reject);
+    req.on("error", (error) => {
+      reject(new Error(`Could not connect to Ollama: ${error.message}`));
+    });
+
     req.write(JSON.stringify(body));
     req.end();
   });
 }
 
-function buildSystemPrompt(language = "english", agentMode = false) {
+function buildSystemPrompt(language = "english", agentMode = false, variant = "default") {
   const languageInstruction =
     language === "spanish"
       ? "Respond in Spanish."
@@ -271,90 +275,173 @@ function buildSystemPrompt(language = "english", agentMode = false) {
       ? "Respond in French."
       : "Respond in English.";
 
-  const behaviorInstruction = agentMode
-    ? "You are in agentic mode. Give a descriptive, detailed answer. Break the response into clear steps when helpful. Ask a clarifying question only if the request is too vague."
-    : "Give a short, simple, direct answer that is easy for a student to understand.";
+  let behaviorInstruction =
+    agentMode
+      ? "You are a helpful local AI assistant. Give a descriptive, detailed answer. Break the response into clear steps when helpful. Ask a clarifying question only if the request is too vague."
+      : "You are a helpful local AI assistant. Give a clear, natural, direct answer that is easy for a student to understand.";
+
+  if (variant === "concise") {
+    behaviorInstruction =
+      "You are a helpful local AI assistant. Give a short, clear, direct answer with only the most important information.";
+  } else if (variant === "detailed") {
+    behaviorInstruction =
+      "You are a helpful local AI assistant. Give a detailed, step-by-step response with explanation and clarity for a student audience.";
+  } else if (variant === "study") {
+    behaviorInstruction =
+      "You are a helpful study assistant. Give an educational answer with simple explanations, structure, and a focus on helping a student understand.";
+  }
 
   return `${languageInstruction} ${behaviorInstruction}`;
 }
-function buildMessages({ message, history = [], language, agentMode }) {
-  const systemPrompt = buildSystemPrompt(language, agentMode);
 
-  const messages = [
-    { role: "system", content: systemPrompt }
-  ];
+function buildMessages({ message, history = [], language, agentMode, variant = "default" }) {
+  const systemPrompt = buildSystemPrompt(language, agentMode, variant);
+  const messages = [{ role: "system", content: systemPrompt }];
 
   for (const item of history) {
     if (item.sender === "user") {
-      messages.push({ role: "user", content: item.content || item.text });
+      messages.push({ role: "user", content: item.content || item.text || "" });
     } else if (item.sender === "bot") {
-      messages.push({ role: "assistant", content: item.content || item.text });
+      messages.push({ role: "assistant", content: item.content || item.text || "" });
     }
   }
 
-  messages.push({ role: "user", content: message });
+  const lastHistoryItem = history[history.length - 1];
+
+  const latestAlreadyIncluded =
+    lastHistoryItem &&
+    lastHistoryItem.sender === "user" &&
+    (lastHistoryItem.content || lastHistoryItem.text || "").trim() === message.trim();
+
+  if (!latestAlreadyIncluded) {
+    messages.push({ role: "user", content: message });
+  }
 
   return messages;
 }
 
-async function generateChatReply({ message, language, agentMode }) {
+async function requestOllamaReply({ message, history = [], language, agentMode, variant = "default", modelName }) {
   const userMessage = String(message || "").trim();
 
   if (!userMessage) {
     throw new Error("Message cannot be empty.");
   }
 
-  const apiKey = process.env.LLM_API_KEY;
-  const apiUrl = process.env.LLM_API_URL;
-  const model = process.env.LLM_MODEL || "default-model";
-
-  if (!apiKey || !apiUrl) {
-    return getFallbackReply(userMessage, language, agentMode);
-  }
-
-  const systemPrompt = buildSystemPrompt(language, agentMode);
+  const ollamaUrl = process.env.OLLAMA_API_URL || "http://127.0.0.1:11434/api/chat";
+  const model = modelName || process.env.OLLAMA_MODEL || "llama3.2:1b";
 
   const payload = {
     model,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ],
-    temperature: 0.7
+    messages: buildMessages({
+      message: userMessage,
+      history,
+      language,
+      agentMode,
+      variant
+    }),
+    stream: false,
+    keep_alive: "10m",
+    options: {
+      temperature:
+        variant === "concise" ? 0.4 :
+        variant === "detailed" ? 0.7 :
+        variant === "study" ? 0.6 :
+        agentMode ? 0.7 : 0.5,
+      num_ctx: 2048
+    }
   };
 
-  const response = await postJson(
-    apiUrl,
-    {
-      Authorization: `Bearer ${apiKey}`
-    },
-    payload
-  );
+  const response = await postJson(ollamaUrl, payload);
 
   if (!response.status || response.status >= 400) {
-    throw new Error("AI provider returned an error.");
+    throw new Error("Ollama returned an error.");
   }
 
   const reply =
-    response.data?.choices?.[0]?.message?.content ||
-    response.data?.reply ||
-    response.data?.output ||
+    response.data?.message?.content ||
+    response.data?.response ||
     null;
 
   if (!reply) {
-    throw new Error("AI provider returned no usable reply.");
+    throw new Error("Ollama returned no usable reply.");
   }
 
   return reply.trim();
 }
 
+async function generateChatReply({ message, history = [], language, agentMode }) {
+  const userMessage = String(message || "").trim();
+
+  if (!userMessage) {
+    throw new Error("Message cannot be empty.");
+  }
+
+  try {
+    return await requestOllamaReply({
+      message: userMessage,
+      history,
+      language,
+      agentMode,
+      variant: "default"
+    });
+  } catch (error) {
+    console.error("Ollama chat error:", error.message);
+    return getFallbackReply(userMessage, language, agentMode);
+  }
+}
+
+async function generateMultipleReplies({
+  message,
+  history = [],
+  language,
+  agentMode
+}) {
+  const userMessage = String(message || "").trim();
+
+  if (!userMessage) {
+    throw new Error("Message cannot be empty.");
+  }
+
+  const models = [
+    {
+      llm: "Llama 3.2 (1B)",
+      modelName: "llama3.2:1b"
+    },
+    {
+      llm: "Qwen 2.5 (0.5B)",
+      modelName: "qwen2.5:0.5b"
+    }
+  ];
+
+  const results = [];
+
+  
+  for (const { llm, modelName } of models) {
+    try {
+      const text = await requestOllamaReply({
+        message: userMessage,
+        history: [], 
+        language,
+        agentMode,
+        modelName
+      });
+
+      results.push({ llm, text });
+    } catch (error) {
+      console.error(`${llm} error:`, error.message);
+
+      results.push({
+        llm,
+        text: getFallbackReply(userMessage, language, agentMode)
+      });
+    }
+  }
+
+  return results;
+}
+
 module.exports = {
   generateChatReply,
+  generateMultipleReplies,
   getFallbackReply
 };
