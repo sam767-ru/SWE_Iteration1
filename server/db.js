@@ -42,6 +42,17 @@ db.serialize(() => {
       FOREIGN KEY (chat_id) REFERENCES chats(id)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS saved_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      response_text TEXT NOT NULL,
+      llm_name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 });
 
 module.exports = db;
