@@ -27,6 +27,7 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       title TEXT NOT NULL,
+      selected_model TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
@@ -42,6 +43,24 @@ db.serialize(() => {
       FOREIGN KEY (chat_id) REFERENCES chats(id)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS saved_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      response_text TEXT NOT NULL,
+      llm_name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.run(`ALTER TABLE chats ADD COLUMN selected_model TEXT`, (err) => {
+    if (err && !err.message.includes("duplicate column")) {
+      console.error("Failed to add selected_model column:", err.message);
+    }
+  });
 });
 
 module.exports = db;
