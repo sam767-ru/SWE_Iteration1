@@ -23,15 +23,11 @@ function setupLandingPage() {
   }
 
   if (signInBtn) {
-    signInBtn.addEventListener("click", () => {
-      savePendingMessage();
-    });
+    signInBtn.addEventListener("click", savePendingMessage);
   }
 
   if (createBtn) {
-    createBtn.addEventListener("click", () => {
-      savePendingMessage();
-    });
+    createBtn.addEventListener("click", savePendingMessage);
   }
 
   landingInput.addEventListener("keydown", (event) => {
@@ -179,191 +175,286 @@ async function setupDashboard() {
   const newChatBtn = document.getElementById("newChatBtn");
 
   let chats = [];
-  let currentChatIndex = -1;
   let currentChat = null;
   let agentMode = false;
+  let isSending = false;
+  let currentModel = null;
 
   if (profileBadge && user.username) {
     profileBadge.textContent = user.username.charAt(0).toUpperCase();
   }
 
-  async function loadChats() {
-  try {
-    const response = await fetch("/api/chats");
-    if (!response.ok) {
-      throw new Error("Failed to load chats");
-    }
-
-    chats = await response.json();
-
-    if (!Array.isArray(chats)) {
-      chats = [];
-    }
-  } catch (error) {
-    chats = [];
-  }
-
-  if (chats.length > 0) {
-    currentChatIndex = 0;
-    currentChat = chats[0];
-  } else {
-    currentChatIndex = -1;
-    currentChat = createTemporaryChat();
-  }
-
-  renderChatList();
-  renderMessages();
- }
-
-
-  function renderChatList(filterText = "") {
-   if (!chatList) return;
-   chatList.innerHTML = "";
-
-   chats.forEach((chat, index) => {
-    if (!chat.title.toLowerCase().includes(filterText.toLowerCase())) {
+  function updateTokenCount() {
+    if (!tokenCount || !currentChat || !Array.isArray(currentChat.messages)) {
+      if (tokenCount) tokenCount.textContent = "0";
       return;
     }
 
-    const li = document.createElement("li");
-    li.textContent = chat.title;
+    const allText = currentChat.messages
+      .map((message) => {
+        if (message.sender === "multi-bot" && Array.isArray(message.responses)) {
+          return message.responses
+            .map((response) => response.reply || response.error || "")
+            .join(" ");
+        }
 
-    if (index === currentChatIndex) {
-      li.classList.add("active");
-    }
+        return message.text || message.content || "";
+      })
+      .join(" ");
 
-    li.addEventListener("click", () => {
-      currentChatIndex = index;
-      currentChat = chats[index];
-      renderChatList(chatSearch ? chatSearch.value : "");
-      renderMessages();
-    });
-
-    chatList.appendChild(li);
-  });
- }
-
-  function ensureCurrentChatIsSaved() {
-   if (!currentChat) return;
-
-   if (currentChat.isTemporary) {
-     currentChat.isTemporary = false;
-     chats.unshift(currentChat);
-     currentChatIndex = 0;
-     renderChatList(chatSearch ? chatSearch.value : "");
+    const count = allText.trim() ? allText.trim().split(/\s+/).length : 0;
+    tokenCount.textContent = count;
   }
- }
-
-  function createTemporaryChat() {
-   return {
-    id: Date.now(),
-    title: "New Chat",
-    isTemporary: true,
-    messages: [
-      {
-        sender: "bot",
-        text: "Welcome. Start a conversation by typing a message below."
-      }
-    ]
-  };
- }
 
   function renderMessages() {
-   if (!chatWindow || !currentChat) return;
+    if (!chatWindow) return;
 
-   chatWindow.innerHTML = "";
+    chatWindow.innerHTML = "";
 
-   currentChat.messages.forEach((message) => {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("chat-message");
-    messageDiv.classList.add(
-      message.sender === "user" ? "user-message" : "bot-message"
-    );
-    messageDiv.textContent = message.text;
-    chatWindow.appendChild(messageDiv);
-  });
+    if (!currentChat || !Array.isArray(currentChat.messages) || currentChat.messages.length === 0) {
+      const emptyDiv = document.createElement("div");
+      emptyDiv.classList.add("chat-message", "bot-message");
+      emptyDiv.textContent = "Welcome. Start a conversation by typing a message below.";
+      chatWindow.appendChild(emptyDiv);
+      updateTokenCount();
+      return;
+    }
 
-  updateTokenCount();
-  chatWindow.scrollTop = chatWindow.scrollHeight;
- }
+    currentChat.messages.forEach((message) => {
+      if (message.sender === "multi-bot" && Array.isArray(message.responses)) {
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("multi-response-wrapper");
 
- function updateTokenCount() {
-   if (!tokenCount || !currentChat) return;
+        message.responses.forEach((item) => {
+          const card = document.createElement("div");
+          card.classList.add("model-response-card");
 
-   const allText = currentChat.messages
-    .map((message) => message.text)
-    .join(" ");
+          const title = document.createElement("h3");
+          title.textContent = item.model;
 
-   const count = allText.trim() ? allText.trim().split(/\s+/).length : 0;
-   tokenCount.textContent = count;
- }
+          const body = document.createElement("p");
+          body.textContent = item.error ? `Error: ${item.error}` : item.reply;
 
-  async function sendMessage() {
-   const text = chatInput.value.trim();
-   if (!text || !currentChat) return;
+          const button = document.createElement("button");
+          button.textContent = "Use this response";
+          button.classList.add("select-model-btn");
 
-   ensureCurrentChatIsSaved();
+          if (currentModel === item.model) {
+            button.textContent = "Selected model";
+            button.classList.add("selected-model-btn");
+          }
 
-   currentChat.messages.push({
-    sender: "user",
-    text
-   });
+          button.addEventListener("click", () => {
+            currentModel = item.model;
+            renderMessages();
+            alert(`Now using ${item.model} for this chat.`);
+          });
 
-   if (currentChat.title === "New Chat") {
-    currentChat.title = text.length > 30 ? text.slice(0, 30) + "..." : text;
-    renderChatList(chatSearch ? chatSearch.value : "");
-   }
+          card.appendChild(title);
+          card.appendChild(body);
+          card.appendChild(button);
+          wrapper.appendChild(card);
+        });
 
-   renderMessages();
-   chatInput.value = "";
-  
-   try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: text,
-        language: languageSelect ? languageSelect.value : "english",
-        agentMode
-      })
+        chatWindow.appendChild(wrapper);
+        return;
+      }
+
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("chat-message");
+      messageDiv.classList.add(
+        message.sender === "user" ? "user-message" : "bot-message"
+      );
+      messageDiv.textContent = message.text || message.content || "";
+      chatWindow.appendChild(messageDiv);
     });
+
+    updateTokenCount();
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function renderChatList() {
+    if (!chatList) return;
+
+    chatList.innerHTML = "";
+
+    chats.forEach((chat) => {
+      const li = document.createElement("li");
+      li.textContent = chat.title || "Untitled Chat";
+
+      if (currentChat && chat.id === currentChat.id) {
+        li.classList.add("active");
+      }
+
+      li.addEventListener("click", async () => {
+        currentModel = null;
+        await openChat(chat.id);
+      });
+
+      chatList.appendChild(li);
+    });
+  }
+
+  async function fetchChats(searchText = "") {
+    const url = searchText.trim()
+      ? `/api/chats?q=${encodeURIComponent(searchText.trim())}`
+      : "/api/chats";
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Failed to load chats.");
+    }
 
     const data = await response.json();
+    chats = Array.isArray(data) ? data : [];
+    renderChatList();
+  }
 
-    currentChat.messages.push({
-      sender: "bot",
-      text: response.ok
-        ? data.reply
-        : (data.error || "Something went wrong.")
-    });
-   } catch (error) {
-    currentChat.messages.push({
-      sender: "bot",
-      text: "Server error while sending message."
-    });
-   }
+  async function openChat(chatId) {
+    try {
+      const response = await fetch(`/api/chats/${chatId}/messages`);
 
-   renderMessages();
- }
- async function handlePendingLandingMessage() {
-   const pendingMessage = sessionStorage.getItem("pendingLandingMessage");
-   if (!pendingMessage) return;
+      if (!response.ok) {
+        throw new Error("Failed to load chat messages.");
+      }
 
-   sessionStorage.removeItem("pendingLandingMessage");
+      const data = await response.json();
 
-   currentChatIndex = -1;
-   currentChat = createTemporaryChat();
+      currentChat = {
+        id: data.chat.id,
+        title: data.chat.title,
+        created_at: data.chat.created_at,
+        messages: Array.isArray(data.messages) ? data.messages : []
+      };
 
-   renderChatList(chatSearch ? chatSearch.value : "");
-   renderMessages();
+      renderChatList();
+      renderMessages();
+    } catch (error) {
+      console.error("Open chat error:", error);
+      alert("Failed to load that chat.");
+    }
+  }
 
-   if (!chatInput) return;
+  async function createNewChat(focusInput = true) {
+    try {
+      const response = await fetch("/api/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ title: "New Chat" })
+      });
 
-   chatInput.value = pendingMessage;
-   await sendMessage();
- }
+      if (!response.ok) {
+        throw new Error("Failed to create chat.");
+      }
+
+      const newChat = await response.json();
+
+      currentModel = null;
+
+      await fetchChats(chatSearch ? chatSearch.value : "");
+      await openChat(newChat.id);
+
+      if (chatInput && focusInput) {
+        chatInput.value = "";
+        chatInput.focus();
+      }
+    } catch (error) {
+      console.error("Create chat error:", error);
+      alert("Failed to create a new chat.");
+    }
+  }
+
+  async function sendMessage() {
+    if (isSending) return;
+
+    const text = chatInput ? chatInput.value.trim() : "";
+    if (!text) return;
+
+    if (!currentChat || !currentChat.id) {
+      await createNewChat(false);
+    }
+
+    if (!currentChat || !currentChat.id) {
+      return;
+    }
+
+    isSending = true;
+
+    const optimisticUserMessage = {
+      sender: "user",
+      text
+    };
+
+    currentChat.messages.push(optimisticUserMessage);
+    renderMessages();
+
+    if (chatInput) {
+      chatInput.value = "";
+    }
+
+    try {
+      const response = await fetch(`/api/chats/${currentChat.id}/multi-model`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: text,
+          language: languageSelect ? languageSelect.value : "english",
+          agentMode,
+          selectedModel: currentModel
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        currentChat.messages.push({
+          sender: "bot",
+          text: data.error || "Something went wrong."
+        });
+      } else {
+        currentChat.messages.push({
+          sender: "multi-bot",
+          responses: Array.isArray(data.responses) ? data.responses : []
+        });
+
+        await fetchChats(chatSearch ? chatSearch.value : "");
+        const updatedChat = chats.find((chat) => chat.id === currentChat.id);
+        if (updatedChat) {
+          currentChat.title = updatedChat.title;
+        }
+      }
+    } catch (error) {
+      currentChat.messages.push({
+        sender: "bot",
+        text: "Server error while sending message."
+      });
+    } finally {
+      isSending = false;
+      renderChatList();
+      renderMessages();
+    }
+  }
+
+  async function handlePendingLandingMessage() {
+    const pendingMessage = sessionStorage.getItem("pendingLandingMessage");
+    if (!pendingMessage) return;
+
+    sessionStorage.removeItem("pendingLandingMessage");
+
+    if (!currentChat || !currentChat.id) {
+      await createNewChat(false);
+    }
+
+    if (!chatInput) return;
+
+    chatInput.value = pendingMessage;
+    await sendMessage();
+  }
 
   if (sendBtn) {
     sendBtn.addEventListener("click", sendMessage);
@@ -386,7 +477,7 @@ async function setupDashboard() {
       try {
         await fetch("/api/logout", { method: "POST" });
       } catch (error) {
-        // ignore logout fetch failure, still redirect
+        // ignore logout fetch failure
       }
 
       window.location.href = "index.html";
@@ -401,8 +492,30 @@ async function setupDashboard() {
   }
 
   if (chatSearch) {
+    let searchTimer = null;
+
     chatSearch.addEventListener("input", () => {
-      renderChatList(chatSearch.value);
+      clearTimeout(searchTimer);
+
+      searchTimer = setTimeout(async () => {
+        try {
+          await fetchChats(chatSearch.value);
+
+          if (currentChat) {
+            const stillVisible = chats.some((chat) => chat.id === currentChat.id);
+            if (!stillVisible) {
+              currentChat = null;
+              renderMessages();
+            } else {
+              renderChatList();
+            }
+          } else {
+            renderChatList();
+          }
+        } catch (error) {
+          console.error("Search error:", error);
+        }
+      }, 250);
     });
   }
 
@@ -412,21 +525,30 @@ async function setupDashboard() {
     });
   }
 
- if (newChatBtn) {
-   newChatBtn.addEventListener("click", () => {
-    currentChatIndex = -1;
-    currentChat = createTemporaryChat();
+  if (newChatBtn) {
+    newChatBtn.addEventListener("click", async () => {
+      await createNewChat(true);
+    });
+  }
 
-    renderChatList(chatSearch ? chatSearch.value : "");
-    renderMessages();
+  try {
+    await fetchChats();
 
-    if (chatInput) {
-      chatInput.value = "";
-      chatInput.focus();
+    if (chats.length > 0) {
+      await openChat(chats[0].id);
+    } else {
+      await createNewChat(false);
     }
-  });
- }
 
-  await loadChats();
-  await handlePendingLandingMessage();
+    await handlePendingLandingMessage();
+  } catch (error) {
+    console.error("Dashboard init error:", error);
+    currentChat = {
+      id: null,
+      title: "New Chat",
+      messages: []
+    };
+    renderChatList();
+    renderMessages();
+  }
 }

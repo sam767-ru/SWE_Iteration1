@@ -496,6 +496,58 @@ body {
   padding: 0 28px 24px;
 }
 
+.multi-response-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  margin: 16px 0;
+  width: 100%;
+}
+
+.model-response-card {
+  flex: 1;
+  background: #eef3ff;
+  border: 1px solid #c9d6f0;
+  border-radius: 16px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.model-response-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.model-response-card p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+
+.select-model-btn {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: none;
+  background-color: var(--accent);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.select-model-btn:hover {
+  background-color: var(--accent-dark);
+}
+
+.selected-model-btn {
+  background-color: #374151;
+}
+
+.selected-model-btn:hover {
+  background-color: #374151;
+}
+
 /* Terms */
 .terms-card p {
   line-height: 1.7;

@@ -7,8 +7,7 @@ Given('I open the landing page', {timeout: 30000}, async function () {
   browser = await puppeteer.launch({ headless: false }); 
   page = await browser.newPage();
   // Start at the landing page
-  await page.goto('http://127.0.0.1:8080/public/index.html'); 
-});
+await page.goto('http://localhost:3000');});
 
 When('I click the "Sign In" button', async function () {
   // This clicks the button on your index.html
