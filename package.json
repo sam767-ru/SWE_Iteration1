@@ -2,11 +2,14 @@
   "name": "ru-chatbot",
   "version": "1.0.0",
   "main": "server/server.js",
-"scripts": {
-  "start": "node server/server.js",
-  "test": "cucumber-js",
-  "unit": "jasmine"
-},
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "cucumber-js",
+    "unit": "npx jasmine",
+    "test:unit": "npx jasmine spec/unit/*.spec.js",
+    "test:integration": "npx jasmine spec/integration/*.spec.js",
+    "test:all": "npm run unit && npm run test:unit && npm run test:integration && npm run test"
+  },
   "dependencies": {
     "@cucumber/cucumber": "^12.7.0",
     "bcrypt": "^5.1.1",
@@ -17,11 +20,7 @@
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
-    "jasmine": "^5.13.0"
-  },
-  "description": "",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+    "jasmine": "^5.13.0",
+    "supertest": "^7.2.2"
+  }
 }
