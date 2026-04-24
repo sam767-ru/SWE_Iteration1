@@ -178,6 +178,7 @@ async function setupDashboard() {
   let currentChat = null;
   let agentMode = false;
   let isSending = false;
+  let currentModel = null;
 
   if (profileBadge && user.username) {
     profileBadge.textContent = user.username.charAt(0).toUpperCase();
@@ -190,7 +191,15 @@ async function setupDashboard() {
     }
 
     const allText = currentChat.messages
-      .map((message) => message.text || message.content || "")
+      .map((message) => {
+        if (message.sender === "multi-bot" && Array.isArray(message.responses)) {
+          return message.responses
+            .map((response) => response.reply || response.error || "")
+            .join(" ");
+        }
+
+        return message.text || message.content || "";
+      })
       .join(" ");
 
     const count = allText.trim() ? allText.trim().split(/\s+/).length : 0;
@@ -212,6 +221,45 @@ async function setupDashboard() {
     }
 
     currentChat.messages.forEach((message) => {
+      if (message.sender === "multi-bot" && Array.isArray(message.responses)) {
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("multi-response-wrapper");
+
+        message.responses.forEach((item) => {
+          const card = document.createElement("div");
+          card.classList.add("model-response-card");
+
+          const title = document.createElement("h3");
+          title.textContent = item.model;
+
+          const body = document.createElement("p");
+          body.textContent = item.error ? `Error: ${item.error}` : item.reply;
+
+          const button = document.createElement("button");
+          button.textContent = "Use this response";
+          button.classList.add("select-model-btn");
+
+          if (currentModel === item.model) {
+            button.textContent = "Selected model";
+            button.classList.add("selected-model-btn");
+          }
+
+          button.addEventListener("click", () => {
+            currentModel = item.model;
+            renderMessages();
+            alert(`Now using ${item.model} for this chat.`);
+          });
+
+          card.appendChild(title);
+          card.appendChild(body);
+          card.appendChild(button);
+          wrapper.appendChild(card);
+        });
+
+        chatWindow.appendChild(wrapper);
+        return;
+      }
+
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("chat-message");
       messageDiv.classList.add(
@@ -239,6 +287,7 @@ async function setupDashboard() {
       }
 
       li.addEventListener("click", async () => {
+        currentModel = null;
         await openChat(chat.id);
       });
 
@@ -303,6 +352,8 @@ async function setupDashboard() {
 
       const newChat = await response.json();
 
+      currentModel = null;
+
       await fetchChats(chatSearch ? chatSearch.value : "");
       await openChat(newChat.id);
 
@@ -345,7 +396,7 @@ async function setupDashboard() {
     }
 
     try {
-      const response = await fetch(`/api/chats/${currentChat.id}/messages`, {
+      const response = await fetch(`/api/chats/${currentChat.id}/multi-model`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -353,7 +404,8 @@ async function setupDashboard() {
         body: JSON.stringify({
           message: text,
           language: languageSelect ? languageSelect.value : "english",
-          agentMode
+          agentMode,
+          selectedModel: currentModel
         })
       });
 
@@ -366,8 +418,8 @@ async function setupDashboard() {
         });
       } else {
         currentChat.messages.push({
-          sender: "bot",
-          text: data.reply
+          sender: "multi-bot",
+          responses: Array.isArray(data.responses) ? data.responses : []
         });
 
         await fetchChats(chatSearch ? chatSearch.value : "");

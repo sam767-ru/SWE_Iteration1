@@ -1,5 +1,9 @@
 require("dotenv").config();
-const { generateChatReply } = require("./chatService");
+const {
+  generateChatReply,
+  generateMultiModelReplies,
+  generateSingleModelReply
+} = require("./chatService");
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
@@ -340,6 +344,111 @@ app.get("/api/chats", requireAuth, async (req, res) => {
 
     return res.status(500).json({
       error: "Failed to load chats."
+    });
+  }
+});
+
+app.post("/api/chats/:chatId/multi-model", requireAuth, async (req, res) => {
+  const chatId = Number(req.params.chatId);
+  const userId = req.session.user.id;
+  const message = String(req.body.message || "").trim();
+  const language = req.body.language;
+  const agentMode = Boolean(req.body.agentMode);
+  const selectedModel = req.body.selectedModel;
+
+  if (!Number.isInteger(chatId) || chatId <= 0) {
+    return res.status(400).json({
+      error: "Invalid chat ID."
+    });
+  }
+
+  if (!message) {
+    return res.status(400).json({
+      error: "Message cannot be empty."
+    });
+  }
+
+  try {
+    const chat = await getChatByIdForUser(chatId, userId);
+
+    if (!chat) {
+      return res.status(404).json({
+        error: "Chat not found."
+      });
+    }
+
+    await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [chatId, "user", message]
+    );
+
+    const history = await getMessagesForChat(chatId);
+
+    let responses;
+
+    if (selectedModel) {
+      responses = [
+        await generateSingleModelReply({
+          model: selectedModel,
+          message,
+          history,
+          language,
+          agentMode
+        })
+      ];
+    } else {
+      responses = await generateMultiModelReplies({
+        message,
+        history,
+        language,
+        agentMode
+      });
+    }
+
+    const combinedBotMessage = responses
+      .map((item) => {
+        if (item.error) {
+          return `${item.model}:\nError: ${item.error}`;
+        }
+
+        return `${item.model}:\n${item.reply}`;
+      })
+      .join("\n\n----------------------\n\n");
+
+    await dbRun(
+      `
+        INSERT INTO messages (chat_id, sender, content)
+        VALUES (?, ?, ?)
+      `,
+      [chatId, "bot", combinedBotMessage]
+    );
+
+    if (!chat.title || chat.title === "New Chat") {
+      const newTitle =
+        message.length > 60 ? `${message.slice(0, 60).trim()}...` : message;
+
+      await dbRun(
+        `
+          UPDATE chats
+          SET title = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        [newTitle || "New Chat", chatId, userId]
+      );
+    }
+
+    return res.json({
+      chatId,
+      responses
+    });
+  } catch (error) {
+    console.error("Multi-model route error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to generate multi-model responses."
     });
   }
 });

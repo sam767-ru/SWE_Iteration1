@@ -80,65 +80,21 @@ function getCurrentTime() {
 function detectIntent(message) {
   const lower = String(message || "").toLowerCase();
 
-  if (["hello", "hi", "hey", "good morning", "good evening"].some(k => lower.includes(k))) {
-    return "greeting";
-  }
-
-  if (["recipe", "cook", "meal", "dinner", "lunch", "breakfast", "ingredients"].some(k => lower.includes(k))) {
-    return "recipe";
-  }
-
-  if (["homework", "assignment", "study", "quiz", "exam", "school"].some(k => lower.includes(k))) {
-    return "homework";
-  }
-
-  if (["code", "programming", "bug", "debug", "javascript", "python", "java", "html", "css", "node"].some(k => lower.includes(k))) {
-    return "coding";
-  }
-
-  if (["math", "algebra", "calculus", "equation", "matrix", "probability", "derivative", "integral"].some(k => lower.includes(k))) {
-    return "math";
-  }
-
-  if (["essay", "rewrite", "paragraph", "grammar", "writing"].some(k => lower.includes(k))) {
-    return "writing";
-  }
-
-  if (["email", "resume", "cover letter"].some(k => lower.includes(k))) {
-    return "career_writing";
-  }
-
-  if (["travel", "trip", "vacation", "flight", "hotel"].some(k => lower.includes(k))) {
-    return "travel";
-  }
-
-  if (["workout", "fitness", "gym", "exercise", "diet"].some(k => lower.includes(k))) {
-    return "fitness";
-  }
-
-  if (["project", "idea", "brainstorm", "capstone"].some(k => lower.includes(k))) {
-    return "brainstorming";
-  }
-
-  if (["what is", "explain", "definition", "meaning"].some(k => lower.includes(k))) {
-    return "explanation";
-  }
-
-  if (["summarize", "summary", "shorten this"].some(k => lower.includes(k))) {
-    return "summarization";
-  }
-
-  if (["schedule", "plan", "organize", "productivity", "time management"].some(k => lower.includes(k))) {
-    return "planning";
-  }
-
-  if (["time", "current time", "what time"].some(k => lower.includes(k))) {
-    return "time";
-  }
-
-  if (["weather", "temperature", "forecast"].some(k => lower.includes(k))) {
-    return "weather";
-  }
+  if (["hello", "hi", "hey", "good morning", "good evening"].some(k => lower.includes(k))) return "greeting";
+  if (["recipe", "cook", "meal", "dinner", "lunch", "breakfast", "ingredients"].some(k => lower.includes(k))) return "recipe";
+  if (["homework", "assignment", "study", "quiz", "exam", "school"].some(k => lower.includes(k))) return "homework";
+  if (["code", "programming", "bug", "debug", "javascript", "python", "java", "html", "css", "node"].some(k => lower.includes(k))) return "coding";
+  if (["math", "algebra", "calculus", "equation", "matrix", "probability", "derivative", "integral"].some(k => lower.includes(k))) return "math";
+  if (["essay", "rewrite", "paragraph", "grammar", "writing"].some(k => lower.includes(k))) return "writing";
+  if (["email", "resume", "cover letter"].some(k => lower.includes(k))) return "career_writing";
+  if (["travel", "trip", "vacation", "flight", "hotel"].some(k => lower.includes(k))) return "travel";
+  if (["workout", "fitness", "gym", "exercise", "diet"].some(k => lower.includes(k))) return "fitness";
+  if (["project", "idea", "brainstorm", "capstone"].some(k => lower.includes(k))) return "brainstorming";
+  if (["what is", "explain", "definition", "meaning"].some(k => lower.includes(k))) return "explanation";
+  if (["summarize", "summary", "shorten this"].some(k => lower.includes(k))) return "summarization";
+  if (["schedule", "plan", "organize", "productivity", "time management"].some(k => lower.includes(k))) return "planning";
+  if (["time", "current time", "what time"].some(k => lower.includes(k))) return "time";
+  if (["weather", "temperature", "forecast"].some(k => lower.includes(k))) return "weather";
 
   return "general";
 }
@@ -168,38 +124,22 @@ function getSimpleReply(intent, language) {
 
 function getDetailedReply(intent, message, language) {
   const replies = {
-    greeting:
-      "Hello! I can help with questions, studying, coding, planning, writing, and more. Tell me what you need and I’ll try to guide you clearly.",
-    recipe:
-      "I can help you build a recipe step by step. Tell me your ingredients, dietary restrictions, cooking time, and what kind of meal you want, and I can suggest a simple dish.",
-    homework:
-      "I can help with schoolwork in a more detailed way. Tell me the course, the exact problem, and whether you want a hint, step-by-step reasoning, or a full explanation.",
-    coding:
-      "I can help debug or explain code. Tell me the programming language, what you are trying to build, what is going wrong, and paste any code or error messages you have.",
-    math:
-      "I can help solve math problems step by step. Send the exact equation or problem, and I can explain the method clearly instead of only giving the final answer.",
-    writing:
-      "I can help improve writing in a more detailed way. Paste your draft and tell me whether you want help with clarity, grammar, organization, tone, or expansion.",
-    career_writing:
-      "I can help with professional writing such as emails, resumes, and cover letters. Tell me the purpose, the audience, and the tone you want, and I can draft something useful.",
-    travel:
-      "I can help plan a trip in more detail. Tell me where you are going, your budget, how long you are staying, and what kinds of activities you enjoy.",
-    fitness:
-      "I can help with a workout or fitness plan. Tell me your goal, experience level, schedule, and equipment, and I can suggest a simple structure.",
-    brainstorming:
-      "I can help brainstorm ideas in a more descriptive way. Tell me the project type, requirements, budget, or constraints, and I can suggest several directions.",
-    explanation:
-      "I can explain that in more detail. Tell me exactly what concept or term you want explained, and I can break it into simple parts with examples.",
-    summarization:
-      "I can summarize text in a more useful way. Paste the text and tell me whether you want a short summary, bullet points, or key takeaways.",
-    planning:
-      "I can help you organize a schedule or plan. Tell me what you are trying to manage, your deadlines, and your priorities, and I can help structure it clearly.",
-    general:
-      `I can help with your request: "${message}". Give me a bit more detail about what you want, and I can provide a clearer and more useful answer.`,
-    time:
-      `The current system time is ${getCurrentTime()}. If you need help scheduling tasks or planning your day, I can also help organize your time.`,
-    weather:
-      "I can help you check the weather forecast. Tell me the city or location you want, and I can provide temperature, conditions, and forecast details."
+    greeting: "Hello! I can help with questions, studying, coding, planning, writing, and more. Tell me what you need and I’ll try to guide you clearly.",
+    recipe: "I can help you build a recipe step by step. Tell me your ingredients, dietary restrictions, cooking time, and what kind of meal you want, and I can suggest a simple dish.",
+    homework: "I can help with schoolwork in a more detailed way. Tell me the course, the exact problem, and whether you want a hint, step-by-step reasoning, or a full explanation.",
+    coding: "I can help debug or explain code. Tell me the programming language, what you are trying to build, what is going wrong, and paste any code or error messages you have.",
+    math: "I can help solve math problems step by step. Send the exact equation or problem, and I can explain the method clearly instead of only giving the final answer.",
+    writing: "I can help improve writing in a more detailed way. Paste your draft and tell me whether you want help with clarity, grammar, organization, tone, or expansion.",
+    career_writing: "I can help with professional writing such as emails, resumes, and cover letters. Tell me the purpose, the audience, and the tone you want, and I can draft something useful.",
+    travel: "I can help plan a trip in more detail. Tell me where you are going, your budget, how long you are staying, and what kinds of activities you enjoy.",
+    fitness: "I can help with a workout or fitness plan. Tell me your goal, experience level, schedule, and equipment, and I can suggest a simple structure.",
+    brainstorming: "I can help brainstorm ideas in a more descriptive way. Tell me the project type, requirements, budget, or constraints, and I can suggest several directions.",
+    explanation: "I can explain that in more detail. Tell me exactly what concept or term you want explained, and I can break it into simple parts with examples.",
+    summarization: "I can summarize text in a more useful way. Paste the text and tell me whether you want a short summary, bullet points, or key takeaways.",
+    planning: "I can help you organize a schedule or plan. Tell me what you are trying to manage, your deadlines, and your priorities, and I can help structure it clearly.",
+    general: `I can help with your request: "${message}". Give me a bit more detail about what you want, and I can provide a clearer and more useful answer.`,
+    time: `The current system time is ${getCurrentTime()}. If you need help scheduling tasks or planning your day, I can also help organize your time.`,
+    weather: "I can help you check the weather forecast. Tell me the city or location you want, and I can provide temperature, conditions, and forecast details."
   };
 
   return localize(replies[intent] || replies.general, language);
@@ -219,6 +159,32 @@ function getFallbackReply(message, language = "english", agentMode = false) {
   }
 
   return getSimpleReply(intent, language);
+}
+
+function extractOllamaReply(data) {
+  if (!data) return null;
+
+  if (typeof data.message?.content === "string") {
+    return data.message.content;
+  }
+
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  if (typeof data.response === "string") {
+    return data.response;
+  }
+
+  if (typeof data.output === "string") {
+    return data.output;
+  }
+
+  if (Array.isArray(data.choices) && typeof data.choices[0]?.message?.content === "string") {
+    return data.choices[0].message.content;
+  }
+
+  return null;
 }
 
 function postJson(url, body) {
@@ -253,7 +219,7 @@ function postJson(url, body) {
       }
     );
 
-    req.setTimeout(180000, () => {
+    req.setTimeout(300000, () => {
       req.destroy();
       reject(new Error("Ollama request timed out."));
     });
@@ -296,32 +262,25 @@ function buildMessages({ message, history = [], language, agentMode }) {
 
   const lastHistoryItem = history[history.length - 1];
 
-const latestAlreadyIncluded =
-  lastHistoryItem &&
-  lastHistoryItem.sender === "user" &&
-  (lastHistoryItem.content || lastHistoryItem.text || "").trim() === message.trim();
+  const latestAlreadyIncluded =
+    lastHistoryItem &&
+    lastHistoryItem.sender === "user" &&
+    (lastHistoryItem.content || lastHistoryItem.text || "").trim() === message.trim();
 
-if (!latestAlreadyIncluded) {
-  messages.push({ role: "user", content: message });
-}
+  if (!latestAlreadyIncluded) {
+    messages.push({ role: "user", content: message });
+  }
 
   return messages;
 }
 
-async function generateChatReply({ message, history = [], language, agentMode }) {
-  const userMessage = String(message || "").trim();
-
-  if (!userMessage) {
-    throw new Error("Message cannot be empty.");
-  }
-
+async function callOllamaModel({ model, message, history = [], language, agentMode }) {
   const ollamaUrl = process.env.OLLAMA_API_URL || "http://127.0.0.1:11434/api/chat";
-  const model = process.env.OLLAMA_MODEL || "qwen3.5:4b";
 
   const payload = {
     model,
     messages: buildMessages({
-      message: userMessage,
+      message,
       history,
       language,
       agentMode
@@ -330,34 +289,98 @@ async function generateChatReply({ message, history = [], language, agentMode })
     keep_alive: "10m",
     options: {
       temperature: agentMode ? 0.7 : 0.5,
-      num_ctx: 4096
+      num_ctx: 2048
     }
   };
 
+  const response = await postJson(ollamaUrl, payload);
+
+  if (!response.status || response.status >= 400) {
+    throw new Error(`Ollama returned status ${response.status}`);
+  }
+
+  const reply = extractOllamaReply(response.data);
+
+  if (!reply) {
+    throw new Error("Ollama returned no usable reply.");
+  }
+
+  return reply.trim();
+}
+
+async function generateChatReply({ message, history = [], language, agentMode, model }) {
+  const userMessage = String(message || "").trim();
+
+  if (!userMessage) {
+    throw new Error("Message cannot be empty.");
+  }
+
+  const selectedModel = model || process.env.OLLAMA_MODEL || "qwen3.5:4b";
+
   try {
-    const response = await postJson(ollamaUrl, payload);
-
-    if (!response.status || response.status >= 400) {
-      throw new Error("Ollama returned an error.");
-    }
-
-    const reply =
-      response.data?.message?.content ||
-      response.data?.response ||
-      null;
-
-    if (!reply) {
-      throw new Error("Ollama returned no usable reply.");
-    }
-
-    return reply.trim();
+    return await callOllamaModel({
+      model: selectedModel,
+      message: userMessage,
+      history,
+      language,
+      agentMode
+    });
   } catch (error) {
     console.error("Ollama chat error:", error.message);
     return getFallbackReply(userMessage, language, agentMode);
   }
 }
 
+async function generateSingleModelReply({ model, message, history = [], language, agentMode }) {
+  try {
+    const reply = await callOllamaModel({
+      model,
+      message,
+      history,
+      language,
+      agentMode
+    });
+
+    return {
+      model,
+      reply,
+      error: null
+    };
+  } catch (error) {
+    return {
+      model,
+      reply: null,
+      error: error.message
+    };
+  }
+}
+
+async function generateMultiModelReplies({ message, history = [], language, agentMode }) {
+  const models = [
+    process.env.OLLAMA_MODEL_1 || "qwen3.5:4b",
+    process.env.OLLAMA_MODEL_2 || "llama3.2:3b"
+  ];
+
+  const results = [];
+
+  for (const model of models) {
+    const result = await generateSingleModelReply({
+      model,
+      message,
+      history,
+      language,
+      agentMode
+    });
+
+    results.push(result);
+  }
+
+  return results;
+}
+
 module.exports = {
   generateChatReply,
+  generateMultiModelReplies,
+  generateSingleModelReply,
   getFallbackReply
 };
