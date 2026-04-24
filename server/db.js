@@ -43,5 +43,22 @@ db.serialize(() => {
     )
   `);
 });
+// Adds new columns
+
+db.run(`
+  ALTER TABLE messages ADD COLUMN is_pending_response INTEGER DEFAULT 0
+`, (err) => {
+  if (err && !err.message.includes("duplicate column name")) {
+    console.error("Error adding is_pending_response column:", err.message);
+  }
+});
+
+db.run(`
+  ALTER TABLE messages ADD COLUMN option_type TEXT DEFAULT NULL
+`, (err) => {
+  if (err && !err.message.includes("duplicate column name")) {
+    console.error("Error adding option_type column:", err.message);
+  }
+});
 
 module.exports = db;
