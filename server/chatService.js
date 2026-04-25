@@ -353,8 +353,28 @@ async function generateChatReply({ message, language, agentMode }) {
 
   return reply.trim();
 }
+async function generateMultipleChatReplies({ message, language, agentMode }) {
+  const userMessage = String(message || "").trim();
 
+  if (!userMessage) {
+    throw new Error("Message cannot be empty.");
+  }
+
+  const intent = detectIntent(userMessage);
+
+  return [
+    {
+      model_name: "LLM 1",
+      response_text: getSimpleReply(intent, language)
+    },
+    {
+      model_name: "LLM 2",
+      response_text: getDetailedReply(intent, userMessage, language)
+    }
+  ];
+}
 module.exports = {
   generateChatReply,
+  generateMultipleChatReplies,
   getFallbackReply
 };

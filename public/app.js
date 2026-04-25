@@ -318,7 +318,7 @@ async function setupDashboard() {
    chatInput.value = "";
   
    try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch("/api/query", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -332,13 +332,26 @@ async function setupDashboard() {
 
     const data = await response.json();
 
-    currentChat.messages.push({
-      sender: "bot",
-      text: response.ok
-        ? data.reply
-        : (data.error || "Something went wrong.")
-    });
-   } catch (error) {
+    // currentChat.messages.push({
+    //   sender: "bot",
+    //   text: response.ok
+    //     ? data.reply
+    //     : (data.error || "Something went wrong.")
+    // });
+    if (response.ok && data.responses) {
+      data.responses.forEach((r, index) => {
+        currentChat.messages.push({
+          sender: "bot",
+          text: `Response ${index + 1}: ${r.response_text}`
+        });
+      });
+    } else {
+      currentChat.messages.push({
+        sender: "bot",
+        text: data.error || "Something went wrong."
+      });
+    }
+  }catch (error) {
     currentChat.messages.push({
       sender: "bot",
       text: "Server error while sending message."

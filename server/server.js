@@ -1,5 +1,5 @@
 require("dotenv").config();
-const {generateChatReply} = require("./chatService");
+const { generateChatReply, generateMultipleChatReplies } = require("./chatService");
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
@@ -248,6 +248,38 @@ app.get("/api/chats", (req, res) => {
 });
 
 /* Demo chatbot reply */
+app.post("/api/query", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({
+      error: "You must be logged in to chat."
+    });
+  }
+
+  const { message, language, agentMode } = req.body;
+
+  if (!message || !String(message).trim()) {
+    return res.status(400).json({
+      error: "Message cannot be empty."
+    });
+  }
+
+  try {
+    const responses = await generateMultipleChatReplies({
+      message,
+      language,
+      agentMode
+    });
+
+    return res.json({ responses });
+  } catch (error) {
+    console.error("Multi-response route error:", error.message);
+
+    return res.status(500).json({
+      error: "Failed to generate multiple responses."
+    });
+  }
+});
+
 app.post("/api/chat", async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({
