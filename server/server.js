@@ -255,7 +255,7 @@ app.post("/api/chat", async (req, res) => {
     });
   }
 
-  const { message, language, agentMode } = req.body;
+  const { message, language, model, agentMode } = req.body;
 
   if (!message || !String(message).trim()) {
     return res.status(400).json({
@@ -267,6 +267,7 @@ app.post("/api/chat", async (req, res) => {
     const reply = await generateChatReply({
       message,
       language,
+      model,
       agentMode
     });
 
