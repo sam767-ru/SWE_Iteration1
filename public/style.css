@@ -224,7 +224,7 @@ body {
 .auth-form input,
 .sidebar-search,
 .chat-input,
-.language-box select {
+.language-box select, .model-box select {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -482,8 +482,15 @@ body {
   padding: 12px 14px;
 }
 
-.language-box {
+.language-box,
+.model-box {
   min-width: 220px;
+}
+
+.model-box label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .language-box label {

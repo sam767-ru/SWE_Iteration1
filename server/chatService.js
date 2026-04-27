@@ -1,5 +1,4 @@
 const https = require("https");
-
 function localize(text, language) {
   const translations = {
     spanish: {
@@ -297,61 +296,54 @@ function buildMessages({ message, history = [], language, agentMode }) {
   return messages;
 }
 
-async function generateChatReply({ message, language, agentMode }) {
+async function generateChatReply({ message, language, model = "local", agentMode }) {
   const userMessage = String(message || "").trim();
 
   if (!userMessage) {
     throw new Error("Message cannot be empty.");
   }
 
-  const apiKey = process.env.LLM_API_KEY;
-  const apiUrl = process.env.LLM_API_URL;
-  const model = process.env.LLM_MODEL || "default-model";
-
-  if (!apiKey || !apiUrl) {
-    return getFallbackReply(userMessage, language, agentMode);
-  }
-
-  const systemPrompt = buildSystemPrompt(language, agentMode);
-
-  const payload = {
-    model,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: userMessage
+  if (model === "local") {
+    try {
+      const response = await fetch("http://127.0.0.1:11434/api/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama3.2:latest",
+          prompt: userMessage,
+          stream: false
+        })
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok || !data.response) {
+        console.error("Ollama bad response:", data);
+        return `[Local ERROR] ${getFallbackReply(userMessage, language, agentMode)}`;
       }
-    ],
-    temperature: 0.7
-  };
-
-  const response = await postJson(
-    apiUrl,
-    {
-      Authorization: `Bearer ${apiKey}`
-    },
-    payload
-  );
-
-  if (!response.status || response.status >= 400) {
-    throw new Error("AI provider returned an error.");
+  
+      return `[Local] ${data.response.trim()}`;
+    } catch (error) {
+      console.error("Ollama connection error:", error.message);
+      return `[Local ERROR] ${getFallbackReply(userMessage, language, agentMode)}`;
+    }
   }
 
-  const reply =
-    response.data?.choices?.[0]?.message?.content ||
-    response.data?.reply ||
-    response.data?.output ||
-    null;
-
-  if (!reply) {
-    throw new Error("AI provider returned no usable reply.");
+  if (model === "gpt") {
+    return `[GPT] ${getFallbackReply(userMessage, language, agentMode)}`;
   }
 
-  return reply.trim();
+  if (model === "gemini") {
+    return `[Gemini] ${getFallbackReply(userMessage, language, agentMode)}`;
+  }
+
+  if (model === "claude") {
+    return `[Claude] ${getFallbackReply(userMessage, language, agentMode)}`;
+  }
+
+  throw new Error("Invalid model selected.");
 }
 
 module.exports = {
