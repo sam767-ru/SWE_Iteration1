@@ -57,6 +57,7 @@ describe("Chat service", () => {
       const reply = await generateChatReply({
         message: "hello",
         language: "english",
+        model: "gpt",
         agentMode: false
       });
 
@@ -65,13 +66,14 @@ describe("Chat service", () => {
 
       process.env.LLM_API_KEY = oldApiKey;
       process.env.LLM_API_URL = oldApiUrl;
-    });
+    }, 15000);
 
     it("throws an error for an empty message", async () => {
       await expectAsync(
         generateChatReply({
           message: "",
           language: "english",
+          model: "gpt",
           agentMode: false
         })
       ).toBeRejectedWithError("Message cannot be empty.");
